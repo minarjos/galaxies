@@ -1,2 +1,2 @@
-galaxies: board.cpp
-	g++ -o galaxies board.cpp -O3 -lcurses -Wall
+galaxies: galaxies.cpp
+	g++ -o galaxies galaxies.cpp -O3 -lcurses -Wall
