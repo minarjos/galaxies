@@ -119,7 +119,7 @@ class board
             std::vector<std::vector<bool>> visited = std::vector<std::vector<bool>>(r, std::vector<bool>(c, false));
             dfs(cent.x / 2, cent.y / 2, cent.n, s, visited, reachable);
         }
-        return std::move(reachable);
+        return reachable;
     }
     // returns all possible next steps using this square
     std::vector<possibility> get_possibilities(int i, int j, const solution &s, std::vector<std::vector<std::set<size_t>>> &reachable) const
@@ -137,10 +137,11 @@ class board
                 possibilites.push_back({cent.n, dist, reflected});
             }
         }
-        return std::move(possibilites);
+        return possibilites;
     }
 
 public:
+    const size_t MAX_SIZE = 50;
     size_t r, c, n;
     std::set<center> centers;
     // adds or removes given center (in case it was already in the set)
@@ -270,7 +271,7 @@ public:
             rows[c.x][2 * c.y] = 'o';
         return rows;
     }
-    // creates string representation of solution / 
+    // creates string representation of solution
     std::vector<std::string> to_solution_string(const solution &s) const
     {
         std::vector<std::string> rows = empty();
@@ -321,9 +322,10 @@ std::ostream &operator<<(std::ostream &os, const std::pair<board, solution> &p)
 std::istream &operator>>(std::istream &is, board &b)
 {
     b.centers.clear();
-    if (!(is >> b.r >> b.c))
+    if (!(is >> b.r >> b.c) || std::max(b.r, b.c) > b.MAX_SIZE)
     {
         b.r = b.c = 7;
+        is.setstate(std::ios::failbit);
         return is;
     }
     std::string row;
@@ -331,7 +333,10 @@ std::istream &operator>>(std::istream &is, board &b)
     for (size_t i = 0; i < 2 * b.r + 1; i++)
     {
         if (!(std::getline(is, row)) || row.size() < 4 * b.c + 1)
+        {
+            is.setstate(std::ios::failbit);
             return is;
+        }
         for (size_t j = 0; j < 4 * b.c + 1; j += 2)
             if (row[j] == 'o')
                 b.add_center(i, j / 2);
@@ -381,6 +386,9 @@ class ui
     // solves the board and prints solution
     void solve(const board &b) const
     {
+        print_board(b);
+        printw("Solving...\n");
+        refresh();
         auto start = std::chrono::steady_clock::now();
         solution s = b.solve();
         auto end = std::chrono::steady_clock::now();
@@ -400,9 +408,16 @@ class ui
         printw("File name: ");
         getstr(file_name);
         std::ifstream ifs(file_name);
-        ifs >> b;
-        print_board(b);
-        printw("Loaded from %s\n", file_name);
+        if(ifs >> b)
+        {
+            print_board(b);
+            printw("Loaded from %s\n", file_name);
+        }
+        else
+        {
+            print_board(b);
+            printw("Loading from %s failed\n", file_name);
+        }
         ifs.close();
     }
     // saves board to file
@@ -462,7 +477,7 @@ public:
             b.update_centers();
         }
         else if (action == 'R')
-            b.r++;
+            b.r = std::min(b.r+1, b.MAX_SIZE);
         else if (action == 'c')
         {
             b.c = std::max((int)b.c - 1, 1);
@@ -470,7 +485,7 @@ public:
             b.update_centers();
         }
         else if (action == 'C')
-            b.c++;
+            b.c = std::min(b.c+1, b.MAX_SIZE);
         // l to load from file
         else if (action == 'l')
         {
@@ -483,7 +498,7 @@ public:
             save(b);
             return true;
         }
-        // escape ends 
+        // escape ends
         else if (action == 27)
             return false;
         // backspace to delete all centers
