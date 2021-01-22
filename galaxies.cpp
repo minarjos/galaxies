@@ -1,14 +1,16 @@
-#include <vector>
-#include <ncurses.h>
-#include <string>
-#include <iostream>
 #include <algorithm>
-#include <set>
 #include <chrono>
 #include <fstream>
-#include <unistd.h>
-#include <stdlib.h>
+#include <iostream>
+#include <ncurses.h>
+#include <set>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string>
+#include <unistd.h>
+#include <vector>
+
+using namespace std;
 
 // class for center of one galaxy
 class center
@@ -17,10 +19,18 @@ public:
     // coordinates and index of center
     size_t x, y, n;
     // we keep centers in set, so they have to be comparable
-    bool operator<(const center &other) const { return std::make_pair(x, y) < std::make_pair(other.x, other.y); };
+    bool operator<(const center &other) const
+    {
+        return make_pair(x, y) < make_pair(other.x, other.y);
+    };
     center(size_t x, size_t y, size_t n) : x(x), y(y), n(n) {}
-    // reflect given square by this center, it is quite complicated because squares and centers use different coordinates
-    std::pair<size_t, size_t> reflect(const std::pair<size_t, size_t> &pos) const { return {(2 * x - (2 * pos.first + 1)) / 2, (2 * y - (2 * pos.second + 1)) / 2}; }
+    // reflect given square by this center, it is quite complicated because
+    // squares and centers use different coordinates
+    pair<size_t, size_t> reflect(const pair<size_t, size_t> &pos) const
+    {
+        return {(2 * x - (2 * pos.first + 1)) / 2,
+                (2 * y - (2 * pos.second + 1)) / 2};
+    }
 };
 
 // class for potential solution
@@ -30,7 +40,7 @@ class solution
     const int dy[4] = {0, -1, 1, 0};
     size_t r, c;
     // we use dfs to check whether is given galaxy connected
-    void dfs(int x, int y, size_t g, std::vector<std::vector<bool>> &visited)
+    void dfs(int x, int y, size_t g, vector<vector<bool>> &visited)
     {
         if (x < 0 || x >= (int)r || y < 0 || y >= (int)c)
             return;
@@ -42,14 +52,20 @@ class solution
     }
 
 public:
-    // galaxies[x][y] gives us index of galaxy in which is the square with coordinates x, y
-    std::vector<std::vector<size_t>> galaxies;
-    solution(size_t r, size_t c) : r(r), c(c) { galaxies = std::vector<std::vector<size_t>>(r, std::vector<size_t>(c, (size_t)0)); }
-    // checks whether the solution is valid - every square is part of some galaxy and galaxies are connected
+    // galaxies[x][y] gives us index of galaxy in which is the square with
+    // coordinates x, y
+    vector<vector<size_t>> galaxies;
+    solution(size_t r, size_t c) : r(r), c(c)
+    {
+        galaxies = vector<vector<size_t>>(r, vector<size_t>(c, (size_t)0));
+    }
+    // checks whether the solution is valid - every square is part of some galaxy
+    // and galaxies are connected
     bool is_valid()
     {
-        std::vector<std::vector<bool>> visited = std::vector<std::vector<bool>>(r, std::vector<bool>(c, false));
-        std::set<size_t> tested;
+        vector<vector<bool>> visited =
+            vector<vector<bool>>(r, vector<bool>(c, false));
+        set<size_t> tested;
         // every square is in some galaxy
         for (auto &&row : galaxies)
             for (auto &&square : row)
@@ -81,7 +97,7 @@ struct possibility
     // distance from center
     size_t distance;
     // reflection of the square by the center
-    std::pair<size_t, size_t> reflection;
+    pair<size_t, size_t> reflection;
 
     bool operator<(const possibility &other) const
     {
@@ -94,12 +110,14 @@ class board
     const int dx[4] = {-1, 0, 0, 1};
     const int dy[4] = {0, -1, 1, 0};
     //  returns true iff given square is in the board
-    bool is_in(std::pair<size_t, size_t> pos) const
+    bool is_in(pair<size_t, size_t> pos) const
     {
         return pos.first >= 0 && pos.second >= 0 && pos.first < r && pos.second < c;
     }
     // we use dfs to check for reachable squares from given center
-    void dfs(int x, int y, size_t g, const solution &s, std::vector<std::vector<bool>> &visited, std::vector<std::vector<std::set<size_t>>> &reachable) const
+    void dfs(int x, int y, size_t g, const solution &s,
+             vector<vector<bool>> &visited,
+             vector<vector<set<size_t>>> &reachable) const
     {
         if (x < 0 || x >= (int)r || y < 0 || y >= (int)c)
             return;
@@ -111,29 +129,37 @@ class board
             dfs(x + dx[i], y + dy[i], g, s, visited, reachable);
     }
     // for every square returns set of reachable centers
-    std::vector<std::vector<std::set<size_t>>> get_reachable(const solution &s) const
+    vector<vector<set<size_t>>> get_reachable(const solution &s) const
     {
-        std::vector<std::vector<std::set<size_t>>> reachable = std::vector<std::vector<std::set<size_t>>>(r, std::vector<std::set<size_t>>(c, std::set<size_t>()));
+        vector<vector<set<size_t>>> reachable =
+            vector<vector<set<size_t>>>(r, vector<set<size_t>>(c, set<size_t>()));
         for (auto &&cent : centers)
         {
-            std::vector<std::vector<bool>> visited = std::vector<std::vector<bool>>(r, std::vector<bool>(c, false));
+            vector<vector<bool>> visited =
+                vector<vector<bool>>(r, vector<bool>(c, false));
             dfs(cent.x / 2, cent.y / 2, cent.n, s, visited, reachable);
         }
         return reachable;
     }
     // returns all possible next steps using this square
-    std::vector<possibility> get_possibilities(int i, int j, const solution &s, std::vector<std::vector<std::set<size_t>>> &reachable) const
+    vector<possibility>
+    get_possibilities(int i, int j, const solution &s,
+                      vector<vector<set<size_t>>> &reachable) const
     {
-        std::vector<possibility> possibilites;
+        vector<possibility> possibilites;
         // tries to reflect around every center
         for (auto &&cent : centers)
         {
-            std::pair<size_t, size_t> reflected = cent.reflect({i, j});
-            // reflection has to be in board and both the reflection and the initial square have to be reachable from given center
-            if (is_in(reflected) && !s.galaxies[reflected.first][reflected.second] && reachable[i][j].count(cent.n) && reachable[reflected.first][reflected.second].count(cent.n))
+            pair<size_t, size_t> reflected = cent.reflect({i, j});
+            // reflection has to be in board and both the reflection and the initial
+            // square have to be reachable from given center
+            if (is_in(reflected) && !s.galaxies[reflected.first][reflected.second] &&
+                reachable[i][j].count(cent.n) &&
+                reachable[reflected.first][reflected.second].count(cent.n))
             {
                 possibility pos;
-                size_t dist = abs(2 * (int)i + 1 - (int)cent.x) + abs(2 * (int)j + 1 - (int)cent.y);
+                size_t dist = abs(2 * (int)i + 1 - (int)cent.x) +
+                              abs(2 * (int)j + 1 - (int)cent.y);
                 possibilites.push_back({cent.n, dist, reflected});
             }
         }
@@ -143,7 +169,7 @@ class board
 public:
     const size_t MAX_SIZE = 50;
     size_t r, c, n;
-    std::set<center> centers;
+    set<center> centers;
     // adds or removes given center (in case it was already in the set)
     void add_center(size_t x, size_t y)
     {
@@ -162,9 +188,9 @@ public:
         if (s.is_valid())
             return s;
         // the square with least possibilities
-        std::pair<size_t, size_t> best_square;
-        std::vector<possibility> best_possibilites;
-        std::vector<std::vector<std::set<size_t>>> reachable = get_reachable(s);
+        pair<size_t, size_t> best_square;
+        vector<possibility> best_possibilites;
+        vector<vector<set<size_t>>> reachable = get_reachable(s);
         // we try every square which is not part of any galaxy
         for (size_t i = 0; i < r; i++)
         {
@@ -172,32 +198,39 @@ public:
             {
                 if (s.galaxies[i][j])
                     continue;
-                std::vector<possibility> possibilites = get_possibilities(i, j, s, reachable);
+                vector<possibility> possibilites =
+                    get_possibilities(i, j, s, reachable);
                 // if there are no possibilities for some square, there is no solution
                 if (possibilites.empty())
                     return s;
                 // replaces the best square if suitable
-                if (best_possibilites.empty() || possibilites.size() < best_possibilites.size())
+                if (best_possibilites.empty() ||
+                    possibilites.size() < best_possibilites.size())
                 {
                     best_square = {i, j};
                     best_possibilites = possibilites;
                 }
             }
         }
-        // sort the possibilities by distance - closer distance is better (but this heuristic does actually make no big difference)
-        std::sort(best_possibilites.begin(), best_possibilites.end());
+        // sort the possibilities by distance - closer distance is better (but this
+        // heuristic does actually make no big difference)
+        sort(best_possibilites.begin(), best_possibilites.end());
         for (size_t i = 0; i < best_possibilites.size(); i++)
         {
             // set the square and its reflection
-            s.galaxies[best_square.first][best_square.second] = best_possibilites[i].index;
-            s.galaxies[best_possibilites[i].reflection.first][best_possibilites[i].reflection.second] = best_possibilites[i].index;
+            s.galaxies[best_square.first][best_square.second] =
+                best_possibilites[i].index;
+            s.galaxies[best_possibilites[i].reflection.first]
+                      [best_possibilites[i].reflection.second] =
+                best_possibilites[i].index;
             solution new_solution = solve(s);
             // if we got valid solution, return it
             if (new_solution.is_valid())
                 return new_solution;
             // undo and try next possibility
             s.galaxies[best_square.first][best_square.second] = 0;
-            s.galaxies[best_possibilites[i].reflection.first][best_possibilites[i].reflection.second] = 0;
+            s.galaxies[best_possibilites[i].reflection.first]
+                      [best_possibilites[i].reflection.second] = 0;
         }
         return s;
     }
@@ -234,27 +267,27 @@ public:
         return solve(s);
     }
     // first kind of row for string representation
-    std::string row1() const
+    string row1() const
     {
-        std::string s = "+";
+        string s = "+";
         for (size_t i = 0; i < c; i++)
             s += " - +";
         return s;
     }
     // second kind of row for string representation
-    std::string row2() const
+    string row2() const
     {
-        std::string s = "|";
+        string s = "|";
         for (size_t i = 0; i < c; i++)
             s += "   |";
         return s;
     }
     // strin representation of empty board
-    std::vector<std::string> empty() const
+    vector<string> empty() const
     {
-        std::string r1 = row1();
-        std::string r2 = row2();
-        std::vector<std::string> v;
+        string r1 = row1();
+        string r2 = row2();
+        vector<string> v;
         v.push_back(r1);
         for (size_t i = 0; i < r; i++)
         {
@@ -264,17 +297,17 @@ public:
         return v;
     }
     // adds centers to empty board
-    std::vector<std::string> to_string() const
+    vector<string> to_string() const
     {
-        std::vector<std::string> rows = empty();
+        vector<string> rows = empty();
         for (auto &&c : centers)
             rows[c.x][2 * c.y] = 'o';
         return rows;
     }
     // creates string representation of solution
-    std::vector<std::string> to_solution_string(const solution &s) const
+    vector<string> to_solution_string(const solution &s) const
     {
-        std::vector<std::string> rows = empty();
+        vector<string> rows = empty();
         for (size_t i = 0; i < r; i++)
             for (size_t j = 0; j < c - 1; j++)
                 if (s.galaxies[i][j] == s.galaxies[i][j + 1])
@@ -285,7 +318,9 @@ public:
                     rows[2 * j + 2][4 * i + 2] = ' ';
         for (size_t i = 0; i < r - 1; i++)
             for (size_t j = 0; j < c - 1; j++)
-                if (s.galaxies[i][j] == s.galaxies[i][j + 1] && s.galaxies[i + 1][j] == s.galaxies[i + 1][j + 1] && s.galaxies[i][j] == s.galaxies[i + 1][j])
+                if (s.galaxies[i][j] == s.galaxies[i][j + 1] &&
+                    s.galaxies[i + 1][j] == s.galaxies[i + 1][j + 1] &&
+                    s.galaxies[i][j] == s.galaxies[i + 1][j])
                     rows[2 * i + 2][4 * j + 4] = ' ';
         for (auto &&c : centers)
             rows[c.x][2 * c.y] = 'o';
@@ -294,7 +329,7 @@ public:
     // deletes bad centers after resize
     void update_centers()
     {
-        std::set<center> new_centers;
+        set<center> new_centers;
         for (auto &&cent : centers)
             if (cent.x < 2 * r && cent.y < 2 * c)
                 new_centers.insert(cent);
@@ -302,39 +337,39 @@ public:
     }
 };
 
-std::ostream &operator<<(std::ostream &os, const board &b)
+ostream &operator<<(ostream &os, const board &b)
 {
-    os << b.r << " " << b.c << std::endl;
-    std::vector<std::string> rows = b.to_string();
+    os << b.r << " " << b.c << endl;
+    vector<string> rows = b.to_string();
     for (auto &&row : rows)
-        os << row << std::endl;
+        os << row << endl;
     return os;
 }
 
-std::ostream &operator<<(std::ostream &os, const std::pair<board, solution> &p)
+ostream &operator<<(ostream &os, const pair<board, solution> &p)
 {
-    std::vector<std::string> rows = p.first.to_solution_string(p.second);
+    vector<string> rows = p.first.to_solution_string(p.second);
     for (auto &&row : rows)
-        os << row << std::endl;
+        os << row << endl;
     return os;
 }
 
-std::istream &operator>>(std::istream &is, board &b)
+istream &operator>>(istream &is, board &b)
 {
     b.centers.clear();
-    if (!(is >> b.r >> b.c) || std::max(b.r, b.c) > b.MAX_SIZE)
+    if (!(is >> b.r >> b.c) || max(b.r, b.c) > b.MAX_SIZE)
     {
         b.r = b.c = 7;
-        is.setstate(std::ios::failbit);
+        is.setstate(ios::failbit);
         return is;
     }
-    std::string row;
-    std::getline(is, row);
+    string row;
+    getline(is, row);
     for (size_t i = 0; i < 2 * b.r + 1; i++)
     {
-        if (!(std::getline(is, row)) || row.size() < 4 * b.c + 1)
+        if (!(getline(is, row)) || row.size() < 4 * b.c + 1)
         {
-            is.setstate(std::ios::failbit);
+            is.setstate(ios::failbit);
             return is;
         }
         for (size_t j = 0; j < 4 * b.c + 1; j += 2)
@@ -362,7 +397,7 @@ class ui
         init_pair(2, COLOR_RED, COLOR_BLACK);
     }
     // prints using ncurses - adds collors
-    void print(const std::vector<std::string> &rows) const
+    void print(const vector<string> &rows) const
     {
         clear();
         for (auto &&row : rows)
@@ -389,14 +424,16 @@ class ui
         print_board(b);
         printw("Solving...\n");
         refresh();
-        auto start = std::chrono::steady_clock::now();
+        auto start = chrono::steady_clock::now();
         solution s = b.solve();
-        auto end = std::chrono::steady_clock::now();
+        auto end = chrono::steady_clock::now();
         print_solution(b, s);
         if (!s.is_valid())
             printw("No solution\n");
         else
-            printw("Solved in %d ms\n", (std::chrono::duration_cast<std::chrono::milliseconds>(end - start)).count());
+            printw(
+                "Solved in %d ms\n",
+                (chrono::duration_cast<chrono::milliseconds>(end - start)).count());
         refresh();
     }
     // loads board from file
@@ -407,7 +444,7 @@ class ui
         print_board(b);
         printw("File name: ");
         getstr(file_name);
-        std::ifstream ifs(file_name);
+        ifstream ifs(file_name);
         if (ifs >> b)
         {
             print_board(b);
@@ -427,8 +464,8 @@ class ui
         print_board(b);
         printw("File name: ");
         getstr(file_name);
-        std::ofstream of(file_name);
-        of << b << std::endl;
+        ofstream of(file_name);
+        of << b << endl;
         print_board(b);
         printw("Saved to %s\n", file_name);
         of.close();
@@ -437,55 +474,49 @@ class ui
 public:
     void print_board(const board &b) const
     {
-        std::vector<std::string> rows = b.to_string();
+        vector<string> rows = b.to_string();
         rows[x][2 * y] = 'x';
         print(rows);
     }
     void print_solution(const board &b, const solution &s) const
     {
-        std::vector<std::string> rows = b.to_solution_string(s);
+        vector<string> rows = b.to_solution_string(s);
         print(rows);
     }
-    ui() : x(1), y(1)
-    {
-        init_ncurses();
-    }
-    ~ui()
-    {
-        endwin();
-    }
+    ui() : x(1), y(1) { init_ncurses(); }
+    ~ui() { endwin(); }
     bool get_action(board &b)
     {
         int action = getch();
         // arrows move cursor
         if (action == KEY_LEFT)
-            y = std::max(y - 1, 1);
+            y = max(y - 1, 1);
         else if (action == KEY_RIGHT)
-            y = std::min(y + 1, (int)(2 * b.c) - 1);
+            y = min(y + 1, (int)(2 * b.c) - 1);
         else if (action == KEY_UP)
-            x = std::max(x - 1, 1);
+            x = max(x - 1, 1);
         else if (action == KEY_DOWN)
-            x = std::min(x + 1, (int)(2 * b.r) - 1);
+            x = min(x + 1, (int)(2 * b.r) - 1);
         // smace toggles center
         else if (action == ' ')
             b.add_center(x, y);
         // r,R and c,C for resize
         else if (action == 'r')
         {
-            b.r = std::max((int)b.r - 1, 1);
-            x = std::min(x, (int)(2 * b.r) - 1);
+            b.r = max((int)b.r - 1, 1);
+            x = min(x, (int)(2 * b.r) - 1);
             b.update_centers();
         }
         else if (action == 'R')
-            b.r = std::min(b.r + 1, b.MAX_SIZE);
+            b.r = min(b.r + 1, b.MAX_SIZE);
         else if (action == 'c')
         {
-            b.c = std::max((int)b.c - 1, 1);
-            y = std::min(y, (int)(2 * b.c) - 1);
+            b.c = max((int)b.c - 1, 1);
+            y = min(y, (int)(2 * b.c) - 1);
             b.update_centers();
         }
         else if (action == 'C')
-            b.c = std::min(b.c + 1, b.MAX_SIZE);
+            b.c = min(b.c + 1, b.MAX_SIZE);
         // l to load from file
         else if (action == 'l')
         {
@@ -515,13 +546,20 @@ public:
     }
 };
 
+void print_usage(char **argv)
+{
+    cerr << "Usage: " << argv[0] << "[-i] [-l file]" << endl;
+    cerr << "\t -i: start inteactive mode" << endl;
+    cerr << "\t -l: file: load puzzle from given file" << endl;
+}
+
 int main(int argc, char **argv)
 {
     bool interactive = false;
 
     int opt;
     bool from_file = false;
-    std::string input_name;
+    string input_name;
     board b = board(7, 7);
 
     // -i starts editor, -l loads from file
@@ -537,17 +575,16 @@ int main(int argc, char **argv)
             input_name = optarg;
             break;
         default:
-            std::cerr << "Usage:" << argv[0] << "[-i]\n"
-                      << std::endl;
+            print_usage(argv);
             return 1;
         }
     }
     if (from_file)
     {
-        std::ifstream fin(input_name);
+        ifstream fin(input_name);
         if (!(fin >> b))
         {
-            std::cerr << "Loading from " << input_name << " failed" << std::endl;
+            cerr << "Loading from " << input_name << " failed" << endl;
             return 1;
         }
         fin.close();
@@ -556,12 +593,12 @@ int main(int argc, char **argv)
     if (!interactive)
     {
         if (!from_file)
-            std::cin >> b;
+            cin >> b;
         solution s = b.solve();
         if (s.is_valid())
-            std::cout << std::make_pair(b, s);
+            cout << make_pair(b, s);
         else
-            std::cout << "No solution" << std::endl;
+            cout << "No solution" << endl;
     }
     else
     {
