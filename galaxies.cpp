@@ -408,7 +408,7 @@ class ui
         printw("File name: ");
         getstr(file_name);
         std::ifstream ifs(file_name);
-        if(ifs >> b)
+        if (ifs >> b)
         {
             print_board(b);
             printw("Loaded from %s\n", file_name);
@@ -477,7 +477,7 @@ public:
             b.update_centers();
         }
         else if (action == 'R')
-            b.r = std::min(b.r+1, b.MAX_SIZE);
+            b.r = std::min(b.r + 1, b.MAX_SIZE);
         else if (action == 'c')
         {
             b.c = std::max((int)b.c - 1, 1);
@@ -485,7 +485,7 @@ public:
             b.update_centers();
         }
         else if (action == 'C')
-            b.c = std::min(b.c+1, b.MAX_SIZE);
+            b.c = std::min(b.c + 1, b.MAX_SIZE);
         // l to load from file
         else if (action == 'l')
         {
@@ -520,15 +520,21 @@ int main(int argc, char **argv)
     bool interactive = false;
 
     int opt;
+    bool from_file = false;
+    std::string input_name;
     board b = board(7, 7);
 
-    // -i starts editor
-    while ((opt = getopt(argc, argv, "i")) != -1)
+    // -i starts editor, -l loads from file
+    while ((opt = getopt(argc, argv, "l:i")) != -1)
     {
         switch (opt)
         {
         case 'i':
             interactive = true;
+            break;
+        case 'l':
+            from_file = true;
+            input_name = optarg;
             break;
         default:
             std::cerr << "Usage:" << argv[0] << "[-i]\n"
@@ -536,10 +542,21 @@ int main(int argc, char **argv)
             return 1;
         }
     }
+    if (from_file)
+    {
+        std::ifstream fin(input_name);
+        if (!(fin >> b))
+        {
+            std::cerr << "Loading from " << input_name << " failed" << std::endl;
+            return 1;
+        }
+        fin.close();
+    }
     // without -i, reads board from stdin and prints it to stdout
     if (!interactive)
     {
-        std::cin >> b;
+        if (!from_file)
+            std::cin >> b;
         solution s = b.solve();
         if (s.is_valid())
             std::cout << std::make_pair(b, s);
