@@ -40,15 +40,16 @@ class solution
     const int dy[4] = {0, -1, 1, 0};
     size_t r, c;
     // we use dfs to check whether is given galaxy connected
-    void dfs(int x, int y, size_t g, vector<vector<bool>> &visited)
+    void dfs(int x, int y, size_t g, vector<bool> &visited)
     {
-        if (x < 0 || x >= (int)r || y < 0 || y >= (int)c)
-            return;
-        if (visited[x][y] || galaxies[x][y] != g)
-            return;
-        visited[x][y] = true;
+        visited[r * x + y] = true;
         for (size_t i = 0; i < 4; i++)
-            dfs(x + dx[i], y + dy[i], g, visited);
+        {
+            int newx = x + dx[i], newy = y + dy[i];
+            if (newx >= 0 && newx < (int)r && newy >= 0 && newy < (int)c &&
+                !visited[r * newx + newy] && galaxies[newx][newy] == g)
+                dfs(newx, newy, g, visited);
+        }
     }
 
 public:
@@ -63,8 +64,7 @@ public:
     // and galaxies are connected
     bool is_valid()
     {
-        vector<vector<bool>> visited =
-            vector<vector<bool>>(r, vector<bool>(c, false));
+        vector<bool> visited(r * c);
         set<size_t> tested;
         // every square is in some galaxy
         for (auto &&row : galaxies)
@@ -76,9 +76,9 @@ public:
         {
             for (size_t j = 0; j < c; j++)
             {
-                if (!visited[i][j] && tested.count(galaxies[i][j]))
+                if (!visited[r * i + j] && tested.count(galaxies[i][j]))
                     return false;
-                else if (!visited[i][j])
+                else if (!visited[r * i + j])
                 {
                     dfs(i, j, galaxies[i][j], visited);
                     tested.insert(galaxies[i][j]);
@@ -116,35 +116,32 @@ class board
     }
     // we use dfs to check for reachable squares from given center
     void dfs(int x, int y, size_t g, const solution &s,
-             vector<vector<bool>> &visited,
-             vector<vector<set<size_t>>> &reachable) const
+             vector<bool> &visited,
+             vector<bool> &reachable) const
     {
-        if (x < 0 || x >= (int)r || y < 0 || y >= (int)c)
-            return;
-        if (visited[x][y] || (s.galaxies[x][y] && s.galaxies[x][y] != g))
-            return;
-        reachable[x][y].insert(g);
-        visited[x][y] = true;
+        reachable[g * r * c + x * r + y] = true;
+        visited[r * x + y] = true;
         for (size_t i = 0; i < 4; i++)
-            dfs(x + dx[i], y + dy[i], g, s, visited, reachable);
+        {
+            int newx = x + dx[i], newy = y + dy[i];
+            if (newx >= 0 && newx < (int)r && newy >= 0 && newy < (int)c &&
+                !visited[r * newx + newy] && !(s.galaxies[newx][newy] && s.galaxies[newx][newy] != g))
+                dfs(newx, newy, g, s, visited, reachable);
+        }
     }
-    // for every square returns set of reachable centers
-    vector<vector<set<size_t>>> get_reachable(const solution &s) const
+    // for every square returns vector of reachable centers
+    vector<bool> get_reachable(const solution &s) const
     {
-        vector<vector<set<size_t>>> reachable =
-            vector<vector<set<size_t>>>(r, vector<set<size_t>>(c, set<size_t>()));
+        vector<bool> reachable(c * r * n);
         for (auto &&cent : centers)
         {
-            vector<vector<bool>> visited =
-                vector<vector<bool>>(r, vector<bool>(c, false));
+            vector<bool> visited(r * c);
             dfs(cent.x / 2, cent.y / 2, cent.n, s, visited, reachable);
         }
         return reachable;
     }
     // returns all possible next steps using this square
-    vector<possibility>
-    get_possibilities(int i, int j, const solution &s,
-                      vector<vector<set<size_t>>> &reachable) const
+    vector<possibility> get_possibilities(int i, int j, const solution &s, vector<bool> &reachable) const
     {
         vector<possibility> possibilites;
         // tries to reflect around every center
@@ -154,8 +151,8 @@ class board
             // reflection has to be in board and both the reflection and the initial
             // square have to be reachable from given center
             if (is_in(reflected) && !s.galaxies[reflected.first][reflected.second] &&
-                reachable[i][j].count(cent.n) &&
-                reachable[reflected.first][reflected.second].count(cent.n))
+                reachable[cent.n * r * c + i * r + j] &&
+                reachable[cent.n * r * c + reflected.first * r + reflected.second])
             {
                 possibility pos;
                 size_t dist = abs(2 * (int)i + 1 - (int)cent.x) +
@@ -164,6 +161,17 @@ class board
             }
         }
         return possibilites;
+    }
+    void renumber()
+    {
+        set<center> new_centers;
+        n = 1;
+        for (auto cent : centers)
+        {
+            cent.n = n++;
+            new_centers.insert(cent);
+        }
+        centers = new_centers;
     }
 
 public:
@@ -177,7 +185,10 @@ public:
         if (centers.count(new_center) == 0)
             centers.insert(center(x, y, n++));
         else
+        {
             centers.erase(new_center);
+            renumber();
+        }
     }
     board(size_t r, size_t c) : r(r), c(c), n(1) {}
 
@@ -190,7 +201,7 @@ public:
         // the square with least possibilities
         pair<size_t, size_t> best_square;
         vector<possibility> best_possibilites;
-        vector<vector<set<size_t>>> reachable = get_reachable(s);
+        vector<bool> reachable = get_reachable(s);
         // we try every square which is not part of any galaxy
         for (size_t i = 0; i < r; i++)
         {
